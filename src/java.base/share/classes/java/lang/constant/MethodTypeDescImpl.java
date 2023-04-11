@@ -26,6 +26,7 @@ package java.lang.constant;
 
 import jdk.internal.access.JavaUtilCollectionAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -48,6 +49,8 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
 
     private final ClassDesc returnType;
     private final List<ClassDesc> argTypes;
+    private @Stable String cachedDescriptorString;
+    private final boolean resolvable;
 
     /**
      * Constructs a {@linkplain MethodTypeDesc} with the specified return type
@@ -60,10 +63,14 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
         this.returnType = requireNonNull(returnType);
         this.argTypes = requireNonNull(trustedArgTypes);
 
-        for (ClassDesc cr : trustedArgTypes) {
-            if (cr.isPrimitive() && cr.descriptorString().equals("V"))
-                throw new IllegalArgumentException("Void parameters not permitted");
-        }
+        int slots = trustedArgTypes.size();
+        for (ClassDesc cr : trustedArgTypes)
+            if (cr.isPrimitive())
+                switch (cr.descriptorString().charAt(0)) {
+                    case 'V' -> throw new IllegalArgumentException("Void parameters not permitted");
+                    case 'D', 'J' -> slots++;
+                }
+        resolvable = (slots & 0xff) == slots;
     }
 
     /**
@@ -177,22 +184,29 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
     }
 
     @Override
-    public MethodType resolveConstantDesc(MethodHandles.Lookup lookup) throws ReflectiveOperationException {
-        @SuppressWarnings("removal")
-        MethodType mtype = AccessController.doPrivileged(new PrivilegedAction<>() {
-            @Override
-            public MethodType run() {
-                return MethodType.fromMethodDescriptorString(descriptorString(),
-                                                             lookup.lookupClass().getClassLoader());
-            }
-        });
+    public String descriptorString() {
+        var str = cachedDescriptorString;
+        if (str != null)
+            return str;
 
-        // let's check that the lookup has access to all the types in the method type
-        lookup.accessClass(mtype.returnType());
-        for (Class<?> paramType: mtype.parameterArray()) {
-            lookup.accessClass(paramType);
+        return cachedDescriptorString = MethodTypeDesc.super.descriptorString();
+    }
+
+    @Override
+    public MethodType resolveConstantDesc(MethodHandles.Lookup lookup) throws ReflectiveOperationException {
+        if (!resolvable)
+            throw new ReflectiveOperationException("Not resolvable: " + descriptorString());
+
+        if (argTypes.length == 0) {
+            return MethodType.methodType(returnType.resolveConstantDesc(lookup));
         }
-        return mtype;
+
+        Class<?>[] params = new Class<?>[argTypes.length];
+        for (int i = 0; i < argTypes.length; i++) {
+            params[i] = argTypes[i].resolveConstantDesc(lookup);
+        }
+
+        return MethodType.methodType(returnType.resolveConstantDesc(lookup), params);
     }
 
     /**
