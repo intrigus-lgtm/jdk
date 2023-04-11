@@ -721,8 +721,7 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                                            this.classDesc,
                                            helperMethodNamePrefix + (index[0] - 1),
                                            MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType())
-                                   )
-                                   .astore(0);
+                                   );
                             }
                             for (int j = 0; j < moduleInfosPackage.size(); j++) {
                                 ModuleInfo minfo = moduleInfosPackage.get(j);
@@ -752,7 +751,6 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                                    helperMethodNamePrefix + (splitModuleInfos.size() - 1),
                                    MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType())
                            )
-                           .astore(0)
                            .aload(MD_VAR)
                            .areturn();
                     });
