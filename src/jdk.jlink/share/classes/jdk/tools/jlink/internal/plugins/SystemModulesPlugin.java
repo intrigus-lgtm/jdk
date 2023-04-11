@@ -118,7 +118,7 @@ public final class SystemModulesPlugin extends AbstractPlugin {
             ClassDesc.ofInternalName("jdk/internal/module/SystemModules");
     private static final ClassDesc CD_SYSTEM_MODULES_MAP =
             ClassDesc.ofInternalName(SYSTEM_MODULES_MAP_CLASSNAME);
-    private boolean enabled;
+    private final boolean enabled;
 
     public SystemModulesPlugin() {
         super("system-modules");
@@ -666,6 +666,76 @@ public final class SystemModulesPlugin extends AbstractPlugin {
          * Generate bytecode for moduleDescriptors method
          */
         private void genModuleDescriptorsMethod(ClassBuilder clb) {
+            if (moduleInfos.size() <= 10) {
+                clb.withMethodBody(
+                        "moduleDescriptors",
+                        MethodTypeDesc.of(CD_MODULE_DESCRIPTOR.arrayType()),
+                        ACC_PUBLIC,
+                        cob -> {
+                            cob.constantInstruction(moduleInfos.size())
+                               .anewarray(CD_MODULE_DESCRIPTOR)
+                               .astore(MD_VAR);
+
+                            for (int index = 0; index < moduleInfos.size(); index++) {
+                                ModuleInfo minfo = moduleInfos.get(index);
+                                new ModuleDescriptorBuilder(cob,
+                                        minfo.descriptor(),
+                                        minfo.packages(),
+                                        index).build();
+                            }
+                            cob.aload(MD_VAR)
+                               .areturn();
+                        });
+                return;
+            }
+
+            // split up module infos in "consumable" packages
+            List<List<ModuleInfo>> splitModuleInfos = new ArrayList<>();
+            List<ModuleInfo> currentModuleInfos = null;
+            for (int index = 0; index < moduleInfos.size(); index++) {
+                // The method is "manually split" based on the heuristics that 90 ModuleDescriptors are smaller than 64kb
+                // The number 10 is chosen "randomly" to be below the 64kb limit of a method
+                if (index % 10 == 0) {
+                    // Prepare new list
+                    currentModuleInfos = new ArrayList<>();
+                    splitModuleInfos.add(currentModuleInfos);
+                }
+                currentModuleInfos.add(moduleInfos.get(index));
+            }
+
+            // generate all helper methods
+            final String helperMethodNamePrefix = "moduleDescriptorsSub";
+            final int[] globalCount = {0};
+            for (final int[] index = {0}; index[0] < splitModuleInfos.size(); index[0]++) {
+                clb.withMethodBody(
+                        helperMethodNamePrefix + index[0],
+                        MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType()),
+                        ACC_PUBLIC,
+                        cob -> {
+                            List<ModuleInfo> moduleInfosPackage = splitModuleInfos.get(index[0]);
+                            if (index[0] > 0) {
+                                // call last helper method
+                                cob.aload(0);
+                                cob.aload(MD_VAR)
+                                   .invokevirtual(
+                                           this.classDesc,
+                                           helperMethodNamePrefix + (index[0] - 1),
+                                           MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType())
+                                   );
+                            }
+                            for (int j = 0; j < moduleInfosPackage.size(); j++) {
+                                ModuleInfo minfo = moduleInfosPackage.get(j);
+                                new ModuleDescriptorBuilder(cob,
+                                        minfo.descriptor(),
+                                        minfo.packages(),
+                                        globalCount[0]).build();
+                                globalCount[0]++;
+                            }
+                            cob.return_();
+                        });
+            }
+
+            // generate call to last helper method
             clb.withMethodBody(
                     "moduleDescriptors",
                     MethodTypeDesc.of(CD_MODULE_DESCRIPTOR.arrayType()),
@@ -675,13 +745,14 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                            .anewarray(CD_MODULE_DESCRIPTOR)
                            .astore(MD_VAR);
 
-                        for (int index = 0; index < moduleInfos.size(); index++) {
-                            ModuleInfo minfo = moduleInfos.get(index);
-                            new ModuleDescriptorBuilder(cob,
-                                                        minfo.descriptor(),
-                                                        minfo.packages(),
-                                                        index).build();
-                        }
+                        cob.aload(0);
+                        cob.aload(MD_VAR)
+                           .invokevirtual(
+                                   this.classDesc,
+                                   helperMethodNamePrefix + (splitModuleInfos.size() - 1),
+                                   MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType())
+                           );
+
                         cob.aload(MD_VAR)
                            .areturn();
                     });
