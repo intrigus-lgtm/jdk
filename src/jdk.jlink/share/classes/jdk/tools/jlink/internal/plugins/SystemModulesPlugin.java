@@ -715,13 +715,14 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                             List<ModuleInfo> moduleInfosPackage = splitModuleInfos.get(index[0]);
                             if (index[0] > 0) {
                                 // call last helper method
-                                cob.aload(0);
-                                cob.aload(MD_VAR)
+                                cob.aload(0)
+                                   .aload(MD_VAR)
                                    .invokevirtual(
                                            this.classDesc,
                                            helperMethodNamePrefix + (index[0] - 1),
                                            MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType())
-                                   );
+                                   )
+                                   .astore(0);
                             }
                             for (int j = 0; j < moduleInfosPackage.size(); j++) {
                                 ModuleInfo minfo = moduleInfosPackage.get(j);
@@ -743,17 +744,16 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                     cob -> {
                         cob.constantInstruction(moduleInfos.size())
                            .anewarray(CD_MODULE_DESCRIPTOR)
-                           .astore(MD_VAR);
-
-                        cob.aload(0);
-                        cob.aload(MD_VAR)
+                           .astore(MD_VAR)
+                           .aload(0)
+                           .aload(MD_VAR)
                            .invokevirtual(
                                    this.classDesc,
                                    helperMethodNamePrefix + (splitModuleInfos.size() - 1),
                                    MethodTypeDesc.of(CD_void, CD_MODULE_DESCRIPTOR.arrayType())
-                           );
-
-                        cob.aload(MD_VAR)
+                           )
+                           .astore(0)
+                           .aload(MD_VAR)
                            .areturn();
                     });
         }
