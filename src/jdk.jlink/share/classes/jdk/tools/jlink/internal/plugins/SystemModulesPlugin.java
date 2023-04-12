@@ -1155,7 +1155,8 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                 }
                 cob.invokevirtual(CD_MODULE_BUILDER,
                                   "requires",
-                                  MTD_REQUIRES_ARRAY);
+                                  MTD_REQUIRES_ARRAY)
+                    .pop();
             }
 
             /*
@@ -1199,7 +1200,8 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                 }
                 cob.invokevirtual(CD_MODULE_BUILDER,
                                   "exports",
-                                  MTD_EXPORTS_ARRAY);
+                                  MTD_EXPORTS_ARRAY)
+                    .pop();
             }
 
             /*
@@ -1255,7 +1257,8 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                 }
                 cob.invokevirtual(CD_MODULE_BUILDER,
                                   "opens",
-                                  MTD_OPENS_ARRAY);
+                                  MTD_OPENS_ARRAY)
+                    .pop();
             }
 
             /*
@@ -1324,7 +1327,8 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                 }
                 cob.invokevirtual(CD_MODULE_BUILDER,
                                   "provides",
-                                  MTD_PROVIDES_ARRAY);
+                                  MTD_PROVIDES_ARRAY)
+                    .pop();
             }
 
             /*
