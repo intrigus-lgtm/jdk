@@ -519,11 +519,12 @@ public final class SystemModulesPlugin extends AbstractPlugin {
 
         private static final int MAX_LOCAL_VARS = 256;
 
-        private final int BUILDER_VAR    = 0;
+        // we need 0 for "this"
+        private final int BUILDER_VAR    = 2;
         private final int MD_VAR         = 1;  // variable for ModuleDescriptor
         private final int MT_VAR         = 1;  // variable for ModuleTarget
         private final int MH_VAR         = 1;  // variable for ModuleHashes
-        private int nextLocalVar         = 2;  // index to next local variable
+        private int nextLocalVar         = 3;  // index to next local variable
 
         // name of class to generate
         private final ClassDesc classDesc;
@@ -675,7 +676,6 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                             cob.constantInstruction(moduleInfos.size())
                                .anewarray(CD_MODULE_DESCRIPTOR)
                                .astore(MD_VAR);
-
                             for (int index = 0; index < moduleInfos.size(); index++) {
                                 ModuleInfo minfo = moduleInfos.get(index);
                                 new ModuleDescriptorBuilder(cob,
@@ -715,8 +715,9 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                             List<ModuleInfo> moduleInfosPackage = splitModuleInfos.get(index[0]);
                             if (index[0] > 0) {
                                 // call last helper method
-                                cob.aload(0)
-                                   .aload(MD_VAR)
+                                cob.dup() // keep MD_VAR on the stack
+                                   .aload(0)
+                                   .aload(1) // load first parameter, which is MD_VAR
                                    .invokevirtual(
                                            this.classDesc,
                                            helperMethodNamePrefix + (index[0] - 1),
