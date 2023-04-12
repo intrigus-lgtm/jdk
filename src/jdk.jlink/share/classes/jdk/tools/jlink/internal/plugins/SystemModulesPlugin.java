@@ -724,6 +724,7 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                             }
                             for (int j = 0; j < moduleInfosPackage.size(); j++) {
                                 ModuleInfo minfo = moduleInfosPackage.get(j);
+                                // executed after the call, thus it is OK to overwrite index 0 (BUILDER_VAR)
                                 new ModuleDescriptorBuilder(cob,
                                         minfo.descriptor(),
                                         minfo.packages(),
