@@ -882,7 +882,7 @@ getStringUTF8(JNIEnv *env, jstring jstr)
 
     result = MALLOC_MIN4(rlen);
     if (result == NULL) {
-        (*env)->ReleasePrimitiveArrayCritical(env, value, str, 0);
+        (*env)->ReleasePrimitiveArrayCritical(env, value, str, JNI_ABORT);
         JNU_ThrowOutOfMemoryError(env, "requested array size exceeds VM limit");
         return NULL;
     }
@@ -896,7 +896,7 @@ getStringUTF8(JNIEnv *env, jstring jstr)
             result[ri++] = c;
         }
     }
-    (*env)->ReleasePrimitiveArrayCritical(env, value, str, 0);
+    (*env)->ReleasePrimitiveArrayCritical(env, value, str, JNI_ABORT);
     result[rlen] = '\0';
     return result;
 }
