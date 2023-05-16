@@ -896,6 +896,10 @@ static GtkWidget *gtk3_get_widget(WidgetType widget_type)
 {
     gboolean init_result = FALSE;
     GtkWidget *result = NULL;
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wparentheses"
+#endif
     switch (widget_type)
     {
         case BUTTON:
@@ -1288,6 +1292,9 @@ static GtkWidget *gtk3_get_widget(WidgetType widget_type)
             result = NULL;
             break;
     }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
     if (result != NULL && init_result)
     {
