@@ -66,7 +66,7 @@ public class MethodTypeDescDescriptor {
 
     @Benchmark
     public String computeDescriptorString(Blackhole blackhole) {
-        var mtd = MethodTypeDesc.of(desc.returnType(), desc.parameterArray());
+        var mtd = MethodTypeDesc.of(desc.returnType(), desc.parameterList());
         blackhole.consume(mtd);
         return mtd.descriptorString();
     }
