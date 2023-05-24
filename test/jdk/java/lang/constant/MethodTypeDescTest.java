@@ -26,6 +26,7 @@ import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -52,6 +53,9 @@ public class MethodTypeDescTest extends SymbolicDescTest {
 
         // Tests accessors (rType, pType, pCount, pList, pArray, descriptorString),
         // factories (ofDescriptor, of), equals
+        if (r.parameterCount() == 0) {
+            assertEquals(r, MethodTypeDesc.of(r.returnType()));
+        }
         assertEquals(r, MethodTypeDesc.ofDescriptor(r.descriptorString()));
         assertEquals(r, MethodTypeDesc.of(r.returnType(), r.parameterArray()));
         assertEquals(r, MethodTypeDesc.of(r.returnType(), r.parameterList().toArray(new ClassDesc[0])));
@@ -59,6 +63,12 @@ public class MethodTypeDescTest extends SymbolicDescTest {
         assertEquals(r, MethodTypeDesc.of(r.returnType(), IntStream.range(0, r.parameterCount())
                                                                    .mapToObj(r::parameterType)
                                                                    .toArray(ClassDesc[]::new)));
+        assertEquals(r, MethodTypeDesc.of(r.returnType(), r.parameterList()));
+        assertEquals(r, MethodTypeDesc.of(r.returnType(), List.copyOf(r.parameterList())));
+        assertEquals(r, MethodTypeDesc.of(r.returnType(), r.parameterList().stream().toList()));
+        assertEquals(r, MethodTypeDesc.of(r.returnType(), IntStream.range(0, r.parameterCount())
+                                                                   .mapToObj(r::parameterType)
+                                                                   .toList()));
     }
 
     private void testMethodTypeDesc(MethodTypeDesc r, MethodType mt) throws ReflectiveOperationException {
@@ -247,26 +257,41 @@ public class MethodTypeDescTest extends SymbolicDescTest {
     }
 
     public void testBadMethodTypeRefs() {
+        // ofDescriptor
         List<String> badDescriptors = List.of("()II", "()I;", "(I;)", "(I)", "()L", "(V)V",
                                               "(java.lang.String)V", "()[]", "(Ljava/lang/String)V",
                                               "(Ljava.lang.String;)V", "(java/lang/String)V");
 
         for (String d : badDescriptors) {
-            expectThrows(IllegalArgumentException.class, () -> {
+            try {
                 MethodTypeDesc r = MethodTypeDesc.ofDescriptor(d);
-            });
+                fail(d);
+            }
+            catch (IllegalArgumentException e) {
+                // good
+            }
         }
 
         // try with null argument
         expectThrows(NullPointerException.class, () -> {
             MethodTypeDesc r = MethodTypeDesc.ofDescriptor(null);
         });
+        // of(ClassDesc)
+        assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(null));
 
+        // of(ClassDesc, ClassDesc...)
+        assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, (ClassDesc[]) null));
+        assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, new ClassDesc[] {null}));
         // try with void arguments, this will stress another code path in particular
         // ConstantMethodTypeDesc::init
         expectThrows(IllegalArgumentException.class, () -> {
             MethodTypeDesc r = MethodTypeDesc.of(CD_int, CD_void);
         });
+
+        // of(ClassDesc, List<ClassDesc>)
+        assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, (List<ClassDesc>) null));
+        assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, Collections.singletonList(null)));
+        assertThrows(IllegalArgumentException.class, () -> MethodTypeDesc.of(CD_int, List.of(CD_void)));
 
         expectThrows(NullPointerException.class, () -> {
             MethodTypeDesc r = MethodTypeDesc.of(CD_int, null);
