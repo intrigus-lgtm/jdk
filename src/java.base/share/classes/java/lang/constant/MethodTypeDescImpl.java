@@ -50,27 +50,22 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
     private final ClassDesc returnType;
     private final List<ClassDesc> argTypes;
     private @Stable String cachedDescriptorString;
-    private final boolean resolvable;
 
     /**
      * Constructs a {@linkplain MethodTypeDesc} with the specified return type
-     * and parameter types
+     * and parameter types. Performs a check over parameter types to ensure their
+     * validity.
      *
      * @param returnType a {@link ClassDesc} describing the return type
-     * @param trustedArgTypes trusted list of {@link ClassDesc}s describing the parameter types
+     * @param argTypes a list of {@link ClassDesc}s describing the parameter types
      */
-    MethodTypeDescImpl(ClassDesc returnType, List<ClassDesc> trustedArgTypes) {
+    MethodTypeDescImpl(ClassDesc returnType, List<ClassDesc> argTypes) {
         this.returnType = requireNonNull(returnType);
-        this.argTypes = requireNonNull(trustedArgTypes);
+        this.argTypes = List.copyOf(argTypes); // implicit null-check
 
-        int slots = trustedArgTypes.size();
-        for (ClassDesc cr : trustedArgTypes)
-            if (cr.isPrimitive())
-                switch (cr.descriptorString().charAt(0)) {
-                    case 'V' -> throw new IllegalArgumentException("Void parameters not permitted");
-                    case 'D', 'J' -> slots++;
-                }
-        resolvable = (slots & 0xff) == slots;
+        for (ClassDesc cr : this.argTypes)
+            if (cr.isPrimitive() && cr.descriptorString().charAt(0) == 'V')
+                throw new IllegalArgumentException("Void parameters not permitted");
     }
 
     /**
@@ -115,7 +110,9 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
 
         ClassDesc retType = ClassDesc.ofDescriptor(descriptor.substring(cur));
         List<ClassDesc> types = ptypes == null ? List.of() : JUCA.listFromTrustedArray(ptypes.toArray());
-        return new MethodTypeDescImpl(retType, types);
+        var ret = new MethodTypeDescImpl(retType, types);
+        ret.cachedDescriptorString = descriptor;
+        return ret;
     }
 
     @Override
@@ -194,19 +191,21 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
 
     @Override
     public MethodType resolveConstantDesc(MethodHandles.Lookup lookup) throws ReflectiveOperationException {
-        if (!resolvable)
-            throw new ReflectiveOperationException("Not resolvable: " + descriptorString());
+        @SuppressWarnings("removal")
+        MethodType mtype = AccessController.doPrivileged(new PrivilegedAction<>() {
+            @Override
+            public MethodType run() {
+                return MethodType.fromMethodDescriptorString(descriptorString(),
+                        lookup.lookupClass().getClassLoader());
+            }
+        });
 
-        if (argTypes.length == 0) {
-            return MethodType.methodType(returnType.resolveConstantDesc(lookup));
+        // let's check that the lookup has access to all the types in the method type
+        lookup.accessClass(mtype.returnType());
+        for (Class<?> paramType: mtype.parameterArray()) {
+            lookup.accessClass(paramType);
         }
-
-        Class<?>[] params = new Class<?>[argTypes.length];
-        for (int i = 0; i < argTypes.length; i++) {
-            params[i] = argTypes[i].resolveConstantDesc(lookup);
-        }
-
-        return MethodType.methodType(returnType.resolveConstantDesc(lookup), params);
+        return mtype;
     }
 
     /**

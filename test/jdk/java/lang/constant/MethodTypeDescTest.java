@@ -263,48 +263,26 @@ public class MethodTypeDescTest extends SymbolicDescTest {
                                               "(Ljava.lang.String;)V", "(java/lang/String)V");
 
         for (String d : badDescriptors) {
-            try {
-                MethodTypeDesc r = MethodTypeDesc.ofDescriptor(d);
-                fail(d);
-            }
-            catch (IllegalArgumentException e) {
-                // good
-            }
+            assertThrows(IllegalArgumentException.class, () -> MethodTypeDesc.ofDescriptor(d));
         }
 
-        // try with null argument
-        expectThrows(NullPointerException.class, () -> {
-            MethodTypeDesc r = MethodTypeDesc.ofDescriptor(null);
-        });
+        assertThrows(NullPointerException.class, () -> MethodTypeDesc.ofDescriptor(null));
+
         // of(ClassDesc)
         assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(null));
 
         // of(ClassDesc, ClassDesc...)
         assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, (ClassDesc[]) null));
         assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, new ClassDesc[] {null}));
-        // try with void arguments, this will stress another code path in particular
-        // ConstantMethodTypeDesc::init
-        expectThrows(IllegalArgumentException.class, () -> {
-            MethodTypeDesc r = MethodTypeDesc.of(CD_int, CD_void);
-        });
+        assertThrows(IllegalArgumentException.class, () -> MethodTypeDesc.of(CD_int, CD_void));
 
         // of(ClassDesc, List<ClassDesc>)
         assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, (List<ClassDesc>) null));
         assertThrows(NullPointerException.class, () -> MethodTypeDesc.of(CD_int, Collections.singletonList(null)));
         assertThrows(IllegalArgumentException.class, () -> MethodTypeDesc.of(CD_int, List.of(CD_void)));
-
-        expectThrows(NullPointerException.class, () -> {
-            MethodTypeDesc r = MethodTypeDesc.of(CD_int, null);
-        });
-
-        expectThrows(NullPointerException.class, () -> {
-            ClassDesc[] paramDescs = new ClassDesc[1];
-            paramDescs[0] = null;
-            MethodTypeDesc r = MethodTypeDesc.of(CD_int, paramDescs);
-        });
     }
 
-    public void testImmutability() {
+    public void testOfArrayImmutability() {
         ClassDesc[] args = {CD_Object, CD_int};
         var mtd = MethodTypeDesc.of(CD_void, args);
 
@@ -312,6 +290,18 @@ public class MethodTypeDescTest extends SymbolicDescTest {
         assertEquals(mtd, MethodTypeDesc.of(CD_void, CD_Object, CD_int));
 
         mtd.parameterArray()[1] = CD_void;
+        assertEquals(mtd, MethodTypeDesc.of(CD_void, CD_Object, CD_int));
+    }
+
+    public void testOfListImmutability() {
+        List<ClassDesc> args = Arrays.asList(CD_Object, CD_int);
+        var mtd = MethodTypeDesc.of(CD_void, args);
+
+        args.set(1, CD_void);
+        assertEquals(mtd, MethodTypeDesc.of(CD_void, CD_Object, CD_int));
+
+        assertThrows(UnsupportedOperationException.class, () ->
+                mtd.parameterList().set(1, CD_void));
         assertEquals(mtd, MethodTypeDesc.of(CD_void, CD_Object, CD_int));
     }
 }

@@ -64,7 +64,7 @@ public sealed interface MethodTypeDesc
      * @since 21
      */
     static MethodTypeDesc of(ClassDesc returnDesc) {
-        return new MethodTypeDescImpl(returnDesc, ConstantUtils.EMPTY_CLASSDESC);
+        return new MethodTypeDescImpl(returnDesc, List.of());
     }
 
     /**
@@ -80,7 +80,7 @@ public sealed interface MethodTypeDesc
      * @since 21
      */
     static MethodTypeDesc of(ClassDesc returnDesc, List<ClassDesc> paramDescs) {
-        return of(returnDesc, paramDescs.toArray(ConstantUtils.EMPTY_CLASSDESC));
+        return new MethodTypeDescImpl(returnDesc, paramDescs);
     }
 
     /**
@@ -196,11 +196,18 @@ public sealed interface MethodTypeDesc
      * @jvms 4.3.3 Method Descriptors
      */
     default String descriptorString() {
-        return String.format("(%s)%s",
-                             Stream.of(parameterArray())
-                                   .map(ClassDesc::descriptorString)
-                                   .collect(Collectors.joining()),
-                             returnType().descriptorString());
+        int stringLength = 2 /* () */ + returnType().descriptorString().length();
+        for (var paramType : parameterList()) {
+            stringLength += paramType.descriptorString().length();
+        }
+
+        var descString = new StringBuilder(stringLength);
+        descString.append('(');
+        for (var paramType : parameterList()) {
+            descString.append(paramType.descriptorString());
+        }
+        return descString.append(')')
+                .append(returnType().descriptorString()).toString();
     }
 
     /**

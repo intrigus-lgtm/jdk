@@ -30,18 +30,17 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.Blackhole;
 
-import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static java.lang.constant.ConstantDescs.*;
-
 /**
- * Performance of different MethodTypeDesc factory methods
+ * Performance of computing a fresh method type descriptor string from a
+ * descriptor symbol.
  */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -49,41 +48,26 @@ import static java.lang.constant.ConstantDescs.*;
 @Measurement(iterations = 6, time = 1)
 @Fork(1)
 @State(Scope.Benchmark)
-public class MethodTypeDescConstruct {
-    public enum Kind {
-        GENERIC(CD_Object, CD_Object, CD_Object),
-        VOID(CD_void),
-        NO_PARAM(CD_Class.arrayType()),
-        ARBITRARY(CD_int, CD_String, CD_String.arrayType(), CD_double.arrayType());
+public class MethodTypeDescDescriptor {
 
-        final String desc;
-        final ClassDesc ret;
-        final ClassDesc[] args;
-        final List<ClassDesc> argsList;
+    @Param({
+            "(Ljava/lang/Object;Ljava/lang/String;)I",
+            "()V",
+            "([IJLjava/lang/String;Z)Ljava/util/List;",
+            "()[Ljava/lang/String;"
+    })
+    public String descString;
+    public MethodTypeDesc desc;
 
-        Kind(ClassDesc ret, ClassDesc... args) {
-            this.desc = MethodTypeDesc.of(ret, args).descriptorString();
-            this.ret = ret;
-            this.args = args;
-            this.argsList = List.of(args);
-        }
-    }
-
-    @Param
-    public Kind kind;
-
-    @Benchmark
-    public MethodTypeDesc ofDescriptorBench() {
-        return MethodTypeDesc.ofDescriptor(kind.desc);
+    @Setup
+    public void setup() {
+        desc = MethodTypeDesc.ofDescriptor(descString);
     }
 
     @Benchmark
-    public MethodTypeDesc ofArrayBench() {
-        return MethodTypeDesc.of(kind.ret, kind.args);
-    }
-
-    @Benchmark
-    public MethodTypeDesc ofListBench() {
-        return MethodTypeDesc.of(kind.ret, kind.argsList);
+    public String computeDescriptorString(Blackhole blackhole) {
+        var mtd = MethodTypeDesc.of(desc.returnType(), desc.parameterArray());
+        blackhole.consume(mtd);
+        return mtd.descriptorString();
     }
 }
