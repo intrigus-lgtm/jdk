@@ -58,6 +58,8 @@ jobs:
     runs-on: ubuntu-22.04
     # Do NOT run if this is a push AND the branch name starts with "jdk" AND is from "openjdk/jdk"
     if: ${{ !(github.event_name == 'push' && startsWith(github.ref_name, 'jdk') && github.repository == 'intrigus-lgtm/jdk') }}
+    steps:
+      - run: true # empty jobs are not allowed, so we have this dummy step
 
   ###
   ### Determine platforms to include
