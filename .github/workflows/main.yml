@@ -59,7 +59,11 @@ jobs:
     # Do NOT run if this is a push AND the branch name starts with "jdk" AND is from "openjdk/jdk"
     if: ${{ (github.event_name == 'push' && startsWith(github.ref_name, 'jdk') && github.repository == 'intrigus-lgtm/jdk') }}
     steps:
-      - run: true # empty jobs are not allowed, so we have this dummy step
+      - run: echo "$CEVENT_NAME" && echo "$CREF_NAME" && echo "$CREPOSITORY"
+        env: 
+          CEVENT_NAME: ${{ github.event_name }}
+          CREF_NAME: ${{ github.ref_name }}
+          CREPOSITORY: ${{ github.repository }}
 
   ###
   ### Determine platforms to include
