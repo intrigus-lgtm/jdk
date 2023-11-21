@@ -30,7 +30,6 @@ on:
     branches-ignore:
       - master
       - pr/*
-      - jdk*
   workflow_dispatch:
     inputs:
       platforms:
@@ -47,8 +46,18 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
+  
 jobs:
+
+  ###
+  ### Determine whether to run this build
+  ###
+
+  should-run-build:
+    name: 'Skip based on repo and branch name'
+    runs-on: ubuntu-22.04
+    # Do NOT run if this is a push AND the branch name starts with "jdk" AND is from "openjdk/jdk"
+    if: ${{ !(github.event_name == 'push' && startsWith(github.ref_name, 'jdk') && github.repository == 'openjdk/jdk') }}
 
   ###
   ### Determine platforms to include
@@ -56,6 +65,7 @@ jobs:
 
   select:
     name: 'Select platforms'
+    needs: should-run-build
     runs-on: ubuntu-22.04
     outputs:
       linux-x64: ${{ steps.include.outputs.linux-x64 }}
